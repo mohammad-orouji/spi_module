@@ -1,0 +1,19 @@
+# Yasin Engineering Co (Version 8)
+IP_Repo/.Xil
+myproject/*
+!myproject/Note.txt
+# Ignore everything inside IP_Repo/ dir
+IP_Repo/**
+!IP_Repo/Note.txt
+# Except for subdirectories (won't be commited anyway if there is no commited file inside)
+!IP_Repo/**/
+# Special IPs should be ignored with command like below because needed they don't reset
+# !IP_REPO/*ad9680*/**
+# Ignore everything inside IP_Repo/*/IP_Repo dir
+IP_Repo/*/IP_Repo/
+# And except for *.xci and *.xml files
+!*.xci
+!*.xml
+*.mcs
+*.prm
+!*.xcix

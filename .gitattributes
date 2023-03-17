@@ -1,0 +1,16 @@
+# Yasin Engineering Co (Version 8)
+# Remove text attribute from all files 
+# This attribute disables end-of-line normalization for all files
+# If the text attribute is unspecified, 
+# Git uses the core.autocrlf configuration variable to determine if the file should be converted.
+
+
+* -text
+
+#  Tell Git not to export certain files 
+
+.gitattributes export-ignore
+.gitignore export-ignore
+Help/pre_build.tcl export-ignore
+Help/req_devices.txt export-ignore
+Help/lc_ips.txt export-ignore
