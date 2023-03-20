@@ -136,6 +136,7 @@ begin
                 r_SS               <= '1';
                 r_RECEIVE_DATA_O   <= (others => '0'); 
                 SEND_DATA_I_r2     <= (others => '0');
+                TX_bit_number      <= 0;
                 r_READY_O          <= '0';
                 data_valid_ack     <= '0';
                 next_state         <= receive_date_send;
@@ -143,7 +144,8 @@ begin
                 r_SCLK             <= CPOL;
                 r_MOSI             <= 'Z'; 
                 r_SS               <= '1';
-                r_RECEIVE_DATA_O   <= (others => '0'); 
+                r_RECEIVE_DATA_O   <= (others => '0');
+                TX_bit_number      <= 0;
                 r_READY_O          <= '1';
                 SEND_DATA_I_r2     <= SEND_DATA_I_r3;
                 next_state         <= receive_date_send;
@@ -162,6 +164,7 @@ begin
                 r_READY_O          <= '0';
                 data_valid_ack     <= '0';
                 SEND_DATA_I_r2     <= SEND_DATA_I_r3;
+                TX_bit_number      <= 0;
                 next_state         <= wait_for_start_send;
                 if START_SEND_I_r = '1' then
                     next_state <= determining_the_CPAH;
@@ -174,6 +177,7 @@ begin
                 r_READY_O          <= '0';
                 data_valid_ack     <= '0';
                 SEND_DATA_I_r2     <= SEND_DATA_I_r3;
+                TX_bit_number      <= 0;
                 next_state         <= RX_TX_state_cphas_0;
                 if CPHA = '1' then
                     next_state <= RX_TX_state_cphas_1;
@@ -186,12 +190,14 @@ begin
                 r_RECEIVE_DATA_O    <= r2_RECEIVE_DATA_O;
                 r_READY_O           <= '0';
                 data_valid_ack      <= '0';
+                TX_bit_number       <= TX_bit_number_r;
                 if TX_bit_number_r = TX then
                     next_state      <= final_delay;
                     TX_bit_number   <= 0;
                 else
                     if t2 = period_spi then
-                        r_SCLK  <= CPOL;
+                        r_SCLK          <= CPOL;
+                        TX_bit_number   <= TX_bit_number_r;
                     elsif t2 = half_period_spi then
                         r_MOSI  <= SEND_DATA_I_r3(TX - TX_bit_number_r - 1);
                         r_RECEIVE_DATA_O(TX - TX_bit_number_r - 1) <= MISO_r;
@@ -209,14 +215,17 @@ begin
                 r_RECEIVE_DATA_O    <= r2_RECEIVE_DATA_O;
                 r_READY_O           <= '0';
                 data_valid_ack      <= '0';
+                TX_bit_number       <= TX_bit_number_r;
                 if TX_bit_number_r = TX then
                     next_state      <= final_delay;
                     TX_bit_number   <= 0;
                 else
                     if t2 = period_spi then
                         r_MOSI  <= SEND_DATA_I_r3(TX - TX_bit_number_r - 1);
-                        r_RECEIVE_DATA_O(TX - TX_bit_number_r - 1) <= MISO_r;
                         r_SCLK  <= CPOL;
+                        r_RECEIVE_DATA_O(TX - TX_bit_number_r - 1) <= MISO_r;
+                        -----------------------------------
+                        TX_bit_number <= TX_bit_number_r;
                     elsif t2 = half_period_spi then
                         r_SCLK  <= not r2_SCLK;
                         -----------------------------------
@@ -232,6 +241,7 @@ begin
                 r_RECEIVE_DATA_O    <= r2_RECEIVE_DATA_O;
                 r_READY_O           <= '0';
                 data_valid_ack      <= '0';
+                TX_bit_number       <= 0;
                 next_state          <= final_delay;
                 if t2 = half_period_spi + 2 then
                     r_SCLK  <= not r2_SCLK;
