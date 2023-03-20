@@ -99,7 +99,7 @@ begin
                 DATA_O      => DATA_counter
             );        
     
-    ins0_spi : entity work.spi 
+    ins0_spi : entity work.spi_master 
         generic map(
             data_TX_spi_reg_width => 8,
             data_RX_spi_reg_width => 8,

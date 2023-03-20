@@ -2,7 +2,7 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
-entity spi is
+entity spi_master is
     generic (
         data_TX_spi_reg_width : integer   := 8;
         data_RX_spi_reg_width : integer   := 8;
@@ -31,9 +31,9 @@ entity spi is
         -- READY_I         : in  std_logic;
         -- VALID_O         : out std_logic
     );
-end entity spi;
+end entity spi_master;
 
-architecture behavioral of spi is
+architecture behavioral of spi_master is
     
     constant TX                : natural := data_TX_spi_reg_width;
     signal   TX_bit_number     : natural range 0 to TX;
