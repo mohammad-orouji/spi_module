@@ -106,7 +106,7 @@ begin
             SYS_CLOCK             => 10, 
             SPI_CLOCK             => 100,
             CPOL                  => '1',
-            CPHA                  => '1'
+            CPHA                  => '0'
             -- MSB_first       : integer := 1; 
             -- LSB_first       : integer := 0
         )

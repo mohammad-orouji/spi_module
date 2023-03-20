@@ -95,8 +95,9 @@ begin
             r2_SS               <= r_SS;
             r2_RECEIVE_DATA_O   <= r_RECEIVE_DATA_O;
             TX_bit_number_r     <= TX_bit_number;
-
+            present_state       <= next_state;
             if RESET_I = '1' then
+                present_state <= idle;
                 SEND_DATA_I_r <= (others => '0');
                 data_valid    <= '0';
 
@@ -116,8 +117,12 @@ begin
         if rising_edge(CLK_I) then
             if present_state /= next_state then
                 t2 <= period_spi; 
-            elsif t2 /= 0 then
-                t2 <= t2 - 1; 
+            else
+                if t2 /= 1 then
+                    t2 <= t2 - 1;
+                else
+                    t2 <= period_spi;
+                end if;
             end if;
         end if;
     end process;
@@ -188,8 +193,8 @@ begin
                     if t2 = period_spi then
                         r_SCLK  <= CPOL;
                     elsif t2 = half_period_spi then
-                        r_MOSI  <= SEND_DATA_I_r3(TX_bit_number_r);
-                        r_RECEIVE_DATA_O(TX_bit_number_r) <= MISO_r;
+                        r_MOSI  <= SEND_DATA_I_r3(TX - TX_bit_number_r - 1);
+                        r_RECEIVE_DATA_O(TX - TX_bit_number_r - 1) <= MISO_r;
                         r_SCLK  <= not r2_SCLK;
                         -----------------------------------
                         TX_bit_number <= TX_bit_number_r + 1;
@@ -209,8 +214,8 @@ begin
                     TX_bit_number   <= 0;
                 else
                     if t2 = period_spi then
-                        r_MOSI  <= SEND_DATA_I_r3(TX_bit_number_r);
-                        r_RECEIVE_DATA_O(TX_bit_number_r) <= MISO_r;
+                        r_MOSI  <= SEND_DATA_I_r3(TX - TX_bit_number_r - 1);
+                        r_RECEIVE_DATA_O(TX - TX_bit_number_r - 1) <= MISO_r;
                         r_SCLK  <= CPOL;
                     elsif t2 = half_period_spi then
                         r_SCLK  <= not r2_SCLK;
@@ -228,10 +233,13 @@ begin
                 r_READY_O           <= '0';
                 data_valid_ack      <= '0';
                 next_state          <= final_delay;
-                if t2 = half_period_spi then
+                if t2 = half_period_spi + 2 then
                     r_SCLK  <= not r2_SCLK;
+                    if CPHA = '0' then
+                        r_MOSI <= 'Z';
+                    end if;
                 end if;
-                if t2 = 0 then
+                if t2 = 0 + 2 then
                     r_SCLK      <= CPOL;
                     r_SS        <= '1';
                     r_MOSI      <= 'Z';
