@@ -33,8 +33,8 @@ begin
     wait for T_10/2;
 end process;
 
-reset_tb        <= '1'  , '0' after (T_10)/2;
+reset_tb        <= '1'  , '0' after (T_10)/2, '1' after 20 us, '0' after 30 us ;
 enable_tb       <= '0'  , '1' after 50 ns;
-start_send_tb   <= '1' after 20 ns;
+start_send_tb   <= '1' after 20 ns, '0' after 50 us;
 
 end architecture testbench;

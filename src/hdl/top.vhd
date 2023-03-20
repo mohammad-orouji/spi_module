@@ -25,7 +25,7 @@ architecture structrual of top is
     signal ready_sender_slave  : std_logic;
     signal valid_sender_slave  : std_logic := '1';
 
-    signal ready_err    : std_logic;
+    signal ready_err    : std_logic := '1';
     signal valid_err    : std_logic;
     
     signal SCLK_tb    : std_logic;
@@ -81,7 +81,7 @@ begin
             generic map(
                 data_TX_spi_slave_reg_width => 8,
                 data_RX_spi_slave_reg_width => 8,
-                CPOL                        => '0',
+                CPOL                        => '1',
                 CPHA                        => '0'
                 -- MSB_first       : integer := 1 
                 -- LSB_first       : integer := 0
