@@ -8,7 +8,7 @@ entity spi_slave is
         data_RX_spi_slave_reg_width : integer   := 8;
         CPOL            : std_logic := '0';
         CPHA            : std_logic := '0'
-        -- MSB_first       : integer := 1; 
+        -- MSB_first       : integer := 1 
         -- LSB_first       : integer := 0
     );
     port (
@@ -24,7 +24,7 @@ entity spi_slave is
         READY_O         : out std_logic;
         VALID_I         : in  std_logic;
         ------------------------------------
-        RECEIVE_DATA_O  : out std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0)  
+        RECEIVE_DATA_O  : out std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);  
         READY_I         : in  std_logic;
         VALID_O         : out std_logic
     );
@@ -41,12 +41,18 @@ architecture behavioral of spi_slave is
     signal data_Transferred : std_logic;
     signal spi_ready        : std_logic;
 
-    signal SEND_DATA_I_r        : std_logic_vector(data_TX_spi_reg_width-1 downto 0);
+    signal SEND_DATA_I_r    : std_logic_vector(data_TX_spi_slave_reg_width-1 downto 0);
+    signal r_SS             : std_logic;
 
-    signal r_RECEIVE_DATA_O     : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
-    signal r2_RECEIVE_DATA_O    : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
-    signal r3_RECEIVE_DATA_O    : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
-    signal r4_RECEIVE_DATA_O    : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
+    signal receive_data             : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
+    signal receive_data_r           : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
+    signal receive_data_r2          : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
+    signal data_rec_spi_valid       : std_logic;
+    signal data_rec_spi_valid_r     : std_logic;
+    signal data_rec_spi_valid_r2    : std_logic;
+
+    signal r_RECEIVE_DATA_O : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
+    signal r_VALID_O        : std_logic;
 
 begin
 
@@ -84,16 +90,16 @@ begin
 
             case spi_mode is
                 --MODE 00
-                when 00 =>
+                when "00" =>
                     captur_edge <= '1';     --risng_edge
                 --MODE 10
-                when 10 =>
+                when "10" =>
                     captur_edge <= '0';     --falling_edge
                 --MODE 01
-                when 01 =>
+                when "01" =>
                     captur_edge <= '0';     --falling_edge
                 --MODE 11
-                when 11 =>
+                when "11" =>
                     captur_edge <= '1';     --risng_edge
                 --MODE 00
                 when others =>
@@ -103,7 +109,7 @@ begin
         end if;
     end process;
 
-    receive_data    <= r_RECEIVE_DATA_O;
+    RECEIVE_DATA_O  <= r_RECEIVE_DATA_O;
     VALID_O         <= r_VALID_O;
     process(CLK_I)
     begin
@@ -136,7 +142,7 @@ begin
 
     process(SCLK)
     begin
-        if spi_mode = '1' then
+        if captur_edge = '1' then
             if rising_edge(SCLK) then
                 receive_data(bit_number - 1) <= MOSI;
                 data_rec_spi_valid           <= '0';
