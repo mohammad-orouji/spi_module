@@ -32,7 +32,7 @@ end entity spi_slave;
 
 architecture behavioral of spi_slave is
 
-    signal bit_number   : natural range 0 to data_TX_spi_slave_reg_width;
+    signal bit_number   : natural range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width;
 
     signal spi_mode         : std_logic_vector(1 downto 0);
     signal captur_edge      : std_logic;
@@ -52,7 +52,7 @@ architecture behavioral of spi_slave is
     signal data_rec_spi_valid_r2    : std_logic;
 
     signal r_RECEIVE_DATA_O : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
-    signal r_VALID_O        : std_logic;
+    signal r_VALID_O        : std_logic := '0';
 
 begin
 
@@ -114,15 +114,18 @@ begin
     process(CLK_I)
     begin
         if rising_edge(CLK_I) then
-            -- receive_data_r2       <= receive_data_r;
-            -- receive_data_r3       <= receive_data_r2;
             receive_data_r          <= receive_data;
             receive_data_r2         <= receive_data_r;
             data_rec_spi_valid_r    <= data_rec_spi_valid;
             data_rec_spi_valid_r2   <= data_rec_spi_valid_r;
+
             if data_rec_spi_valid_r = '0' and data_rec_spi_valid_r2 = '1' then
-                r_RECEIVE_DATA_O   <= receive_data_r2;
-                r_VALID_O          <= '1';
+                if r_VALID_O = '0' then
+                    r_RECEIVE_DATA_O <= receive_data_r2;
+                else
+                    r_RECEIVE_DATA_O <= r_RECEIVE_DATA_O;
+                end if;
+                r_VALID_O <= '1';
             end if;
 
             if r_VALID_O = '1' and READY_I = '1' then
@@ -140,25 +143,20 @@ begin
         end if;
     end process;
 
-    process(SCLK)
+    process(SCLK, RESET_I)
     begin
-        if captur_edge = '1' then
+        if RESET_I = '1' then
+            receive_data    <= (others => '0');
+            MISO            <= 'Z'; 
+            bit_number      <= data_TX_spi_slave_reg_width;
+        elsif captur_edge = '1' then
             if rising_edge(SCLK) then
                 receive_data(bit_number - 1) <= MOSI;
                 data_rec_spi_valid           <= '0';
-                -- receive_data_r            <= receive_data;
-                MISO        <= SEND_DATA_I_r(bit_number - 1); 
-                bit_number  <= bit_number - 1;
+                MISO                         <= SEND_DATA_I_r(bit_number - 1); 
+                bit_number                   <= bit_number - 1;
                 if bit_number = 1 then
-                    -- receive_data_r   <= receive_data;
                     data_rec_spi_valid  <= '1';
-                    bit_number          <= data_TX_spi_slave_reg_width;
-                end if;
-
-                if RESET_I = '1' then
-                    receive_data    <= (others => '0');
-                    -- receive_data_r   <= (others => '0');
-                    MISO                <= 'Z'; 
                     bit_number          <= data_TX_spi_slave_reg_width;
                 end if;
             end if;
@@ -166,20 +164,10 @@ begin
             if falling_edge(SCLK) then
                 receive_data(bit_number - 1) <= MOSI;
                 data_rec_spi_valid           <= '0';
-                -- receive_data_r            <= receive_data;
-                MISO        <= SEND_DATA_I_r(bit_number - 1); 
-                bit_number  <= bit_number - 1;
+                MISO                         <= SEND_DATA_I_r(bit_number - 1); 
+                bit_number                   <= bit_number - 1;
                 if bit_number = 1 then
-                    -- receive_data(bit_number - 1)   <= MOSI;
-                    -- receive_data_r(bit_number - 1) <= MOSI;
                     data_rec_spi_valid  <= '1';
-                    bit_number          <= data_TX_spi_slave_reg_width;
-                end if;
-
-                if RESET_I = '1' then
-                    receive_data        <= (others => '0');
-                    -- receive_data_r   <= (others => '0');
-                    MISO                <= 'Z'; 
                     bit_number          <= data_TX_spi_slave_reg_width;
                 end if;
             end if;
