@@ -25,7 +25,7 @@ entity spi is
         SEND_DATA_I     : in  std_logic_vector(data_TX_spi_reg_width-1 downto 0);
         START_SEND_I    : in  std_logic;
         READY_O         : out std_logic;
-        VALID_I         : in  std_logic
+        VALID_I         : in  std_logic;
         ------------------------------------
         RECEIVE_DATA_O  : out std_logic_vector(data_RX_spi_reg_width-1 downto 0)  
         -- READY_I         : in  std_logic;
@@ -98,7 +98,7 @@ begin
 
             if RESET_I = '1' then
                 SEND_DATA_I_r <= (others => '0');
-                data_recieved <= '0';
+                data_valid    <= '0';
 
                 --FSM register
                 SEND_DATA_I_r3      <= (others => '0');
@@ -116,7 +116,7 @@ begin
         if rising_edge(CLK_I) then
             if present_state /= next_state then
                 t2 <= period_spi; 
-            elsif t2 /= t_max then
+            elsif t2 /= 0 then
                 t2 <= t2 - 1; 
             end if;
         end if;
@@ -128,7 +128,7 @@ begin
             when idle =>
                 r_SCLK             <= CPOL;
                 r_MOSI             <= 'Z'; 
-                r_SS               <= '1'
+                r_SS               <= '1';
                 r_RECEIVE_DATA_O   <= (others => '0'); 
                 SEND_DATA_I_r2     <= (others => '0');
                 r_READY_O          <= '0';
@@ -137,7 +137,7 @@ begin
             when receive_date_send =>
                 r_SCLK             <= CPOL;
                 r_MOSI             <= 'Z'; 
-                r_SS               <= '1'
+                r_SS               <= '1';
                 r_RECEIVE_DATA_O   <= (others => '0'); 
                 r_READY_O          <= '1';
                 SEND_DATA_I_r2     <= SEND_DATA_I_r3;
@@ -152,31 +152,31 @@ begin
             when wait_for_start_send =>
                 r_SCLK             <= CPOL;
                 r_MOSI             <= 'Z'; 
-                r_SS               <= '1'
+                r_SS               <= '1';
                 r_RECEIVE_DATA_O   <= (others => '0'); 
                 r_READY_O          <= '0';
                 data_valid_ack     <= '0';
                 SEND_DATA_I_r2     <= SEND_DATA_I_r3;
                 next_state         <= wait_for_start_send;
                 if START_SEND_I_r = '1' then
-                    next_state <= TX_state;
+                    next_state <= determining_the_CPAH;
                 end if;
             when determining_the_CPAH =>
                 r_SCLK             <= CPOL;
                 r_MOSI             <= 'Z'; 
-                r_SS               <= '1'
+                r_SS               <= '1';
                 r_RECEIVE_DATA_O   <= (others => '0'); 
                 r_READY_O          <= '0';
                 data_valid_ack     <= '0';
                 SEND_DATA_I_r2     <= SEND_DATA_I_r3;
                 next_state         <= RX_TX_state_cphas_0;
                 if CPHA = '1' then
-                    next_state <= delay_for_cphas_1;
+                    next_state <= RX_TX_state_cphas_1;
                 end if;
             when RX_TX_state_cphas_1 =>
                 SEND_DATA_I_r2      <= SEND_DATA_I_r3;
                 r_MOSI              <= r2_MOSI;
-                r_SS                <= '0'
+                r_SS                <= '0';
                 r_SCLK              <= r2_SCLK;
                 r_RECEIVE_DATA_O    <= r2_RECEIVE_DATA_O;
                 r_READY_O           <= '0';
@@ -233,7 +233,7 @@ begin
                 end if;
                 if t2 = 0 then
                     r_SCLK      <= CPOL;
-                    r_SS        <= '1'
+                    r_SS        <= '1';
                     r_MOSI      <= 'Z';
                     next_state  <= receive_date_send;
                 end if;
