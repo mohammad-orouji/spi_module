@@ -32,18 +32,31 @@ end entity spi_slave;
 
 architecture behavioral of spi_slave is
 
-    signal bit_number   : natural range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width;
+    signal bit_number_tx   : natural range 0 to data_RX_spi_slave_reg_width := data_RX_spi_slave_reg_width;
+    signal bit_number_tx_cpha0   : natural range 0 to data_RX_spi_slave_reg_width-1 := data_RX_spi_slave_reg_width-1;
 
     signal spi_mode         : std_logic_vector(1 downto 0);
     signal captur_edge      : std_logic;
+    signal launch_edge      : std_logic;
 
     signal data_received    : std_logic;
     signal data_Transferred : std_logic;
-    signal spi_ready        : std_logic;
+    signal spi_ready        : std_logic ;
+    signal ready        : std_logic ;
 
     signal SEND_DATA_I_r    : std_logic_vector(data_TX_spi_slave_reg_width-1 downto 0);
-    signal r_SS             : std_logic;
+    signal SS_r             : std_logic;
+    signal SS_r2            : std_logic;
+    -- signal MISO_r           : std_logic;
+    signal shift_en         : std_logic;
+    signal reset_rx         : std_logic;
 
+    signal bit_number_rx_risnig         : natural range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width;
+    signal receive_data_risnig          : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
+    signal data_rec_spi_valid_risnig    : std_logic;
+    signal bit_number_rx_falling        : natural range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width;
+    signal receive_data_falling         : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
+    signal data_rec_spi_valid_falling   : std_logic;
     signal receive_data             : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
     signal receive_data_r           : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
     signal receive_data_r2          : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0);
@@ -56,53 +69,63 @@ architecture behavioral of spi_slave is
 
 begin
 
-    READY_O  <= spi_ready and data_Transferred;
+    READY_O  <= spi_ready and ready;
     spi_mode <= CPHA & CPOL;
     process(CLK_I)
     begin
         if rising_edge(CLK_I) then
             SEND_DATA_I_r   <= SEND_DATA_I_r;
-            r_SS            <= SS;
+            -- r_SS            <= SS;
 
-            data_Transferred <= '1';
+            -- data_Transferred <= '1';
             spi_ready        <= '1';
-            data_received    <= '0';
+            ready            <= '1';
+            data_received    <= data_received;
+
             if VALID_I = '1' and READY_O = '1' then
                 SEND_DATA_I_r   <= SEND_DATA_I;
+                ready           <= '0';
                 data_received   <= '1';
             end if;
 
-            if r_SS = '0' then
+            if SS = '0' then
                 spi_ready        <= '0';
-                data_Transferred <= '1';
+                -- data_Transferred <= '1';
+                data_received    <= '0';
             end if;
 
-            if r_SS = '1' and data_received = '1' then
-                data_Transferred <= '0';
+            if SS = '1' and data_received = '1' then
+                ready <= '0';
             end if;
 
             if RESET_I = '1' then
                 SEND_DATA_I_r    <= (others => '0');
-                data_Transferred <= '1';
-                spi_ready        <= '1';
+                ready            <= '0';
+                -- data_Transferred <= '0';
+                spi_ready        <= '0';
                 data_received    <= '0';
             end if;
 
             case spi_mode is
                 --MODE 00
                 when "00" =>
+                    launch_edge <= '0';     --falling_edge
                     captur_edge <= '1';     --risng_edge
                 --MODE 10
                 when "10" =>
+                    launch_edge <= '1';     --risng_edge
                     captur_edge <= '0';     --falling_edge
                 --MODE 01
                 when "01" =>
+                    launch_edge <= '1';     --risng_edge
                     captur_edge <= '0';     --falling_edge
                 --MODE 11
                 when "11" =>
+                    launch_edge <= '0';     --falling_edge
                     captur_edge <= '1';     --risng_edge
                 --MODE 00
                 when others =>
+                    launch_edge <= '0';     --falling_edge
                     captur_edge <= '1';     --risng_edge
             end case;
                 
@@ -111,9 +134,13 @@ begin
 
     RECEIVE_DATA_O  <= r_RECEIVE_DATA_O;
     VALID_O         <= r_VALID_O;
+    receive_data       <= receive_data_risnig       when captur_edge = '1' else receive_data_falling;
+    data_rec_spi_valid <= data_rec_spi_valid_risnig when captur_edge = '1' else data_rec_spi_valid_falling;
     process(CLK_I)
     begin
         if rising_edge(CLK_I) then
+            SS_r                    <= SS;
+            SS_r2                   <= SS_r;
             receive_data_r          <= receive_data;
             receive_data_r2         <= receive_data_r;
             data_rec_spi_valid_r    <= data_rec_spi_valid;
@@ -143,36 +170,102 @@ begin
         end if;
     end process;
 
-    process(SCLK, RESET_I)
+    reset_rx <= '1' when SS = '1' else '0';
+    RX_capture_rising : process(SCLK)
     begin
-        if RESET_I = '1' then
-            receive_data    <= (others => '0');
-            MISO            <= 'Z'; 
-            bit_number      <= data_TX_spi_slave_reg_width;
-        elsif captur_edge = '1' then
-            if rising_edge(SCLK) then
-                receive_data(bit_number - 1) <= MOSI;
-                data_rec_spi_valid           <= '0';
-                MISO                         <= SEND_DATA_I_r(bit_number - 1); 
-                bit_number                   <= bit_number - 1;
-                if bit_number = 1 then
-                    data_rec_spi_valid  <= '1';
-                    bit_number          <= data_TX_spi_slave_reg_width;
+        if rising_edge(SCLK) then
+            receive_data_risnig(bit_number_rx_risnig - 1) <= MOSI;
+            data_rec_spi_valid_risnig              <= '0';
+            bit_number_rx_risnig                   <= bit_number_rx_risnig - 1;
+            if bit_number_rx_risnig = 1 then
+                data_rec_spi_valid  <= '1';
+                bit_number_rx_risnig       <= data_TX_spi_slave_reg_width;
+            end if;
+            if reset_rx = '1' then
+                receive_data_risnig    <= (others => '0');
+                bit_number_rx_risnig   <= data_TX_spi_slave_reg_width;
+            end if;
+        end if;
+    end process RX_capture_rising;
+
+    RX_capture_falling : process(SCLK)
+    begin            
+        if falling_edge(SCLK) then
+            receive_data_falling(bit_number_rx_falling - 1) <= MOSI;
+            data_rec_spi_valid_falling              <= '0';
+            bit_number_rx_falling                   <= bit_number_rx_falling - 1;
+            if bit_number_rx_falling = 1 then
+                data_rec_spi_valid_falling  <= '1';
+                bit_number_rx_falling       <= data_TX_spi_slave_reg_width;
+            end if;
+            if reset_rx = '1' then
+                receive_data_falling    <= (others => '0');
+                bit_number_rx_falling   <= data_TX_spi_slave_reg_width;
+            end if;
+        end if;
+    end process RX_capture_falling;
+          
+
+    TX : process(SCLK, SS)
+    begin
+        if SS = '1' then
+            shift_en              <= '1'; 
+            -- MISO                  <= 'Z'; 
+        else
+            shift_en <= '0'; 
+
+            -- if launch_edge = '1' then
+            if CPHA = '0' then
+                if SS = '0' and shift_en = '1' then
+                shift_en    <= '0'; 
+                MISO        <= SEND_DATA_I_r(data_TX_spi_slave_reg_width - 1);
                 end if;
             end if;
-        else
-            if falling_edge(SCLK) then
-                receive_data(bit_number - 1) <= MOSI;
-                data_rec_spi_valid           <= '0';
-                MISO                         <= SEND_DATA_I_r(bit_number - 1); 
-                bit_number                   <= bit_number - 1;
-                if bit_number = 1 then
-                    data_rec_spi_valid  <= '1';
-                    bit_number          <= data_TX_spi_slave_reg_width;
+
+            if launch_edge = '1' then
+                if rising_edge(SCLK) then
+                    if shift_en = '1' then
+                        bit_number_tx         <= data_TX_spi_slave_reg_width;
+                        bit_number_tx_cpha0   <= data_TX_spi_slave_reg_width - 1;
+                    end if;
+                    if CPHA = '0' then
+                        if bit_number_tx_cpha0 = 0 then
+                            -- MISO <= MISO_r;                    
+                        else 
+                            bit_number_tx_cpha0   <= bit_number_tx_cpha0 - 1;
+                            MISO <= SEND_DATA_I_r(bit_number_tx_cpha0 - 1); 
+                        end if;
+                    else
+                        bit_number_tx   <= bit_number_tx - 1;
+                        MISO            <= SEND_DATA_I_r(bit_number_tx - 1); 
+                        if bit_number_tx = 1 then
+                            bit_number_tx   <= data_TX_spi_slave_reg_width;
+                        end if;
+                    end if;
+                end if;
+            else
+                if falling_edge(SCLK) then
+                    if shift_en = '1' then
+                        bit_number_tx         <= data_TX_spi_slave_reg_width;
+                        bit_number_tx_cpha0   <= data_TX_spi_slave_reg_width - 1;
+                    end if;
+                    if CPHA = '0' then
+                        if bit_number_tx_cpha0 = 0 then
+                        else 
+                            bit_number_tx_cpha0   <= bit_number_tx_cpha0 - 1;
+                            MISO <= SEND_DATA_I_r(bit_number_tx_cpha0 - 1); 
+                        end if;
+                    else
+                        bit_number_tx   <= bit_number_tx - 1;
+                        MISO            <= SEND_DATA_I_r(bit_number_tx - 1); 
+                        if bit_number_tx = 1 then
+                            bit_number_tx   <= data_TX_spi_slave_reg_width;
+                        end if;
+                    end if;
                 end if;
             end if;
         end if;
-    end process;
+    end process TX;
 
 end architecture behavioral;
 

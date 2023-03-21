@@ -3,123 +3,181 @@ use ieee.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
 
 entity top is
-    port (
-        RESET_TOP       :   in      std_logic;
-        CLK_TOP         :   in      std_logic;
-        ENABLE_TOP      :   in      std_logic;
-        START_SEN_TOP   :   in      std_logic;
-        ERROR_TOP       :   out     std_logic_vector(3 downto 0)
+    generic (
+        baud_rate        : integer := 1;        -- 1 MHz
+        sys_clock        : integer := 100;      -- 100 MHz
+        data_reg_width   : integer := 8;         
+        error_reg_width  : integer := 4;         
+        SPI_MODE         : std_logic_vector(1 downto 0) := "10"       
     );
-end top;
-
+    port (
+        RESET_I         : in  std_logic;
+        CLK_I           : in  std_logic;
+        ENABLE_I        : in  std_logic;
+        START_SEND_I    : in  std_logic;
+        ERROR_MASTER_O  : out std_logic_vector(error_reg_width-1 downto 0);
+        ERROR_SLAVE_O   : out std_logic_vector(error_reg_width-1 downto 0)
+    );
+end top;          
+    
 architecture structrual of top is
 
-    --spi master
-    signal ready_counter        : std_logic;
-    signal valid_counter        : std_logic;
-    signal DATA_counter         : std_logic_vector(7 downto 0) := (others => '0') ;
-    signal DATA_rec_of_slave    : std_logic_vector(7 downto 0) := (others => '0') ;
+    constant spi_clk : integer   := (1000 / baud_rate); -- sclk according to ns
+    constant sys_clk : integer   := (1000 / sys_clock); -- sys_clk according to ns
+    constant CPHA    : std_logic := SPI_MODE(1);            
+    constant CPOL    : std_logic := SPI_MODE(0);  
 
-    --spi slave
-    signal data_err             : std_logic_vector(7 downto 0);
+    --counter spi master
+    signal ready_counter_spi_master : std_logic;
+    signal valid_counter_spi_master : std_logic;
+    signal DATA_counter_spi_master  : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
 
-    signal data_send_of_master  : std_logic_vector(7 downto 0) := "01010101" ;
-    signal ready_sender_slave   : std_logic;
-    signal valid_sender_slave   : std_logic := '1';
+    --counter spi slave
+    signal ready_counter_spi_slave : std_logic;
+    signal valid_counter_spi_slave : std_logic;
+    signal DATA_counter_spi_slave  : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
 
-    signal ready_err    : std_logic := '1';
-    signal valid_err    : std_logic;
+
+    --err_check spi master
+    component ERROR_CHECK  is
+        generic (
+            constant number_of_bit_DATA_I   : integer ;
+            constant number_of_bit_ERROR_O  : integer 
+        );
+        port(
+            CLK_I     :   in    std_logic;
+            RESET_I   :   in    std_logic;
+            VALID_I   :   in    std_logic;
+            DATA_I    :   in    std_logic_vector( number_of_bit_DATA_I-1 downto 0);
+            ERROR_O   :   out   std_logic_vector(number_of_bit_ERROR_O-1 downto 0);
+            READY_O   :   out   std_logic
+        );
+    end component;
+    signal ready_err_spi_master   : std_logic;
+    signal valid_err_spi_master   : std_logic;
+    signal DATA_err_spi_master    : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
+
+    --err_check spi slave
+    signal ready_err_spi_slave   : std_logic;
+    signal valid_err_spi_slave   : std_logic;
+    signal DATA_err_spi_slave    : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
+
+    --spi
+    signal SCLK    : std_logic;
+    signal MOSI    : std_logic;
+    signal MISO    : std_logic;
+    signal SS      : std_logic;
     
-    signal SCLK_tb    : std_logic;
-    signal MOSI_tb    : std_logic;
-    signal MISO_tb    : std_logic;
-    signal SS_tb      : std_logic;
-
 begin
 
     ins0_counter : entity  work.COUNTER
         generic map( 
-            reg_width_data => 8
+            reg_width_data => data_reg_width
         )    
         port map(
-            ENABLE_I    => ENABLE_TOP,
-            RESET_I     => RESET_TOP,
-            CLK_I       => CLK_TOP,
-            READY_I     => ready_counter,
-            VALID_O     => valid_counter,
-            DATA_O      => DATA_counter
-        );  
+            ENABLE_I    => ENABLE_I,
+            RESET_I     => RESET_I,
+            CLK_I       => CLK_I,
+            READY_I     => ready_counter_spi_master,
+            VALID_O     => valid_counter_spi_master,
+            DATA_O      => DATA_counter_spi_master
+        ); 
         
-
-    
     ins0_spi_master : entity work.spi_master 
         generic map(
-            data_TX_spi_reg_width => 8,
-            data_RX_spi_reg_width => 8,
-            SYS_CLOCK             => 10, 
-            SPI_CLOCK             => 100,
-            CPOL                  => '1',
-            CPHA                  => '0'
+            data_TX_spi_reg_width => data_reg_width,
+            data_RX_spi_reg_width => data_reg_width,
+            SYS_CLOCK             => sys_clk, 
+            SPI_CLOCK             => spi_clk,
+            CPOL                  => CPOL,
+            CPHA                  => CPHA
             -- MSB_first       : integer := 1; 
             -- LSB_first       : integer := 0
         )
         port map(
-            CLK_I           => CLK_TOP,
-            RESET_I         => RESET_TOP,
-            SCLK            => SCLK_tb,
-            MOSI            => MOSI_tb,
-            MISO            => MISO_tb,
-            SS              => SS_tb,
+            CLK_I           => CLK_I,
+            RESET_I         => RESET_I,
+            SCLK            => SCLK,
+            MOSI            => MOSI,
+            MISO            => MISO,
+            SS              => SS,
             ------------------------------------
-            SEND_DATA_I     => DATA_counter,
-            START_SEND_I    => START_SEN_TOP,
-            READY_O         => ready_counter,
-            VALID_I         => valid_counter,
+            SEND_DATA_I     => DATA_counter_spi_master,
+            START_SEND_I    => START_SEND_I,
+            READY_O         => ready_counter_spi_master,
+            VALID_I         => valid_counter_spi_master,
             ------------------------------------
-            RECEIVE_DATA_O  => DATA_rec_of_slave
-            -- READY_I         : in  std_logic;
-            -- VALID_O         : out std_logic
+            RECEIVE_DATA_O  => DATA_err_spi_master,
+            READY_I         => ready_err_spi_master,
+            VALID_O         => valid_err_spi_master
         );
+
+    ins0_err : ERROR_CHECK
+        generic map(
+            number_of_bit_DATA_I   => data_reg_width,
+            number_of_bit_ERROR_O  => error_reg_width
+        )
+        port map(
+            CLK_I     => CLK_I,
+            RESET_I   => RESET_I,
+            VALID_I   => valid_err_spi_master,
+            DATA_I    => DATA_err_spi_master,
+            ERROR_O   => ERROR_MASTER_O,
+            READY_O   => ready_err_spi_master
+        );
+
+    ins1_counter : entity  work.COUNTER
+        generic map( 
+            reg_width_data => data_reg_width
+        )    
+        port map(
+            ENABLE_I    => ENABLE_I,
+            RESET_I     => RESET_I,
+            CLK_I       => CLK_I,
+            READY_I     => ready_counter_spi_slave,
+            VALID_O     => valid_counter_spi_slave,
+            DATA_O      => DATA_counter_spi_slave
+        );  
 
     ins0_spi_slave : entity work.spi_slave 
         generic map(
-            data_TX_spi_slave_reg_width => 8,
-            data_RX_spi_slave_reg_width => 8,
-            CPOL                        => '1',
-            CPHA                        => '0'
+            data_TX_spi_slave_reg_width => data_reg_width,
+            data_RX_spi_slave_reg_width => data_reg_width,
+            CPOL                        => CPOL,
+            CPHA                        => CPHA
             -- MSB_first       : integer := 1 
             -- LSB_first       : integer := 0
         )
         port map(
-            CLK_I           => CLK_TOP,
-            RESET_I         => RESET_TOP,
+            CLK_I           => CLK_I,
+            RESET_I         => RESET_I,
             ------------------------------------
-            SCLK            => SCLK_tb,
-            MOSI            => MOSI_tb,
-            SS              => SS_tb,
-            MISO            => MISO_tb,
+            SCLK            => SCLK,
+            MOSI            => MOSI,
+            SS              => SS,
+            MISO            => MISO,
             ------------------------------------
-            SEND_DATA_I     => data_send_of_master,
-            READY_O         => ready_sender_slave,
-            VALID_I         => valid_sender_slave,
+            SEND_DATA_I     => DATA_counter_spi_slave,
+            READY_O         => ready_counter_spi_slave,
+            VALID_I         => valid_counter_spi_slave,
             ------------------------------------
-            RECEIVE_DATA_O  => data_err,
-            READY_I         => ready_err,
-            VALID_O         => valid_err
+            RECEIVE_DATA_O  => DATA_err_spi_slave,
+            READY_I         => ready_err_spi_slave,
+            VALID_O         => valid_err_spi_slave
         );
-
-    ins0_err : entity  work.ERROR_CHECK
+ 
+    ins1_err : ERROR_CHECK
         generic map(
-            number_of_bit_DATA_I   => 8,
-            number_of_bit_ERROR_O  => 4
+            number_of_bit_DATA_I   => data_reg_width,
+            number_of_bit_ERROR_O  => error_reg_width
         )
         port map(
-            CLK_I     => CLK_TOP,
-            RESET_I   => RESET_TOP,
-            VALID_I   => valid_err,
-            DATA_I    => data_err,
-            ERROR_O   => ERROR_TOP,
-            READY_O   => ready_err
+            CLK_I     => CLK_I,
+            RESET_I   => RESET_I,
+            VALID_I   => valid_err_spi_slave,
+            DATA_I    => DATA_err_spi_slave,
+            ERROR_O   => ERROR_SLAVE_O,
+            READY_O   => ready_err_spi_slave
         );
 
 end architecture structrual;  
