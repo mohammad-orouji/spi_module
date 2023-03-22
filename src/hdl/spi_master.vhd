@@ -45,19 +45,19 @@ architecture behavioral of spi_master is
 
     signal r_READY_O            : std_logic;
     signal START_SEND_I_r       : std_logic;
-    signal SEND_DATA_I_r        : std_logic_vector(data_TX_spi_reg_width-1 downto 0);
-    signal SEND_DATA_I_r2       : std_logic_vector(data_TX_spi_reg_width-1 downto 0);
-    signal SEND_DATA_I_r3       : std_logic_vector(data_TX_spi_reg_width-1 downto 0);
+    signal SEND_DATA_I_r        : std_logic_vector(data_TX_spi_reg_width-1 downto 0) := (others => '0');
+    signal SEND_DATA_I_r2       : std_logic_vector(data_TX_spi_reg_width-1 downto 0) := (others => '0');
+    signal SEND_DATA_I_r3       : std_logic_vector(data_TX_spi_reg_width-1 downto 0) := (others => '0');
     
-    signal receive_data        : std_logic_vector(data_RX_spi_reg_width-1 downto 0);
-    signal receive_data_r      : std_logic_vector(data_RX_spi_reg_width-1 downto 0);
+    signal receive_data        : std_logic_vector(data_RX_spi_reg_width-1 downto 0)  := (others => '0');
+    signal receive_data_r      : std_logic_vector(data_RX_spi_reg_width-1 downto 0)  := (others => '0');
     signal shift_en            : std_logic;
     signal shift_en_r          : std_logic;
-    signal r_RECEIVE_DATA_O    : std_logic_vector(data_RX_spi_reg_width-1 downto 0);
+    signal r_RECEIVE_DATA_O    : std_logic_vector(data_RX_spi_reg_width-1 downto 0) := (others => '0');
     signal r_VALID_O           : std_logic;
 
-    signal r_SCLK   : std_logic;
-    signal r2_SCLK  : std_logic;
+    signal r_SCLK   : std_logic := CPOL;
+    signal r2_SCLK  : std_logic := CPOL;
     signal r_MOSI   : std_logic;
     signal r2_MOSI  : std_logic;
     signal r_SS     : std_logic := '1';
@@ -244,7 +244,7 @@ begin
                 else
                     if t2 = period_spi then
                         if shift_en_r ='1' then
-                            receive_data(TX - TX_bit_number_r - 1)  <= MISO;
+                            receive_data(TX - TX_bit_number_r)  <= MISO;
                         end if;
                         r_SCLK          <= CPOL;
                         TX_bit_number   <= TX_bit_number_r;
