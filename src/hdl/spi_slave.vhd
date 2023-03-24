@@ -47,11 +47,9 @@ architecture behavioral of spi_slave is
     signal shift_en         : std_logic;
     signal reset_rx         : std_logic;
 
-    signal bit_number_rx_risnig         : natural range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width;
     signal receive_data_risnig          : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0) := (others => '0');
     signal data_rec_spi_valid_risnig    : std_logic;
 
-    signal bit_number_rx_falling        : natural range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width;
     signal receive_data_falling         : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0) := (others => '0');
     signal data_rec_spi_valid_falling   : std_logic;
 
@@ -168,37 +166,38 @@ begin
         end if;
     end process;
 
-    reset_rx <= '1' when SS = '1' else '0';
-    RX_capture_rising : process(SCLK)
+    RX_capture_rising : process(SCLK, SS)
+        variable bit_number_rx_rising : integer range 0 to data_RX_spi_slave_reg_width := data_RX_spi_slave_reg_width;
     begin
+        if SS = '1' then
+            bit_number_rx_rising := data_RX_spi_slave_reg_width;
+        end if;
+
         if rising_edge(SCLK) then
-            receive_data_risnig(bit_number_rx_risnig - 1) <= MOSI;
-            data_rec_spi_valid_risnig                     <= '0';
-            bit_number_rx_risnig                          <= bit_number_rx_risnig - 1;
-            if bit_number_rx_risnig = 1 then
+            receive_data_risnig(bit_number_rx_rising - 1)   <= MOSI;
+            data_rec_spi_valid_risnig                       <= '0';
+            bit_number_rx_rising                            := bit_number_rx_rising - 1;
+            if bit_number_rx_rising = 0 then
                 data_rec_spi_valid_risnig  <= '1';
-                bit_number_rx_risnig       <= data_TX_spi_slave_reg_width;
-            end if;
-            if reset_rx = '1' then
-                receive_data_risnig    <= (others => '0');
-                bit_number_rx_risnig   <= data_TX_spi_slave_reg_width;
+                bit_number_rx_rising := data_RX_spi_slave_reg_width;
             end if;
         end if;
     end process RX_capture_rising;
 
-    RX_capture_falling : process(SCLK)
-    begin            
+    RX_capture_falling : process(SCLK, SS)
+        variable bit_number_rx_falling : integer range 0 to data_RX_spi_slave_reg_width := data_RX_spi_slave_reg_width;
+    begin      
+        if SS = '1' then
+            bit_number_rx_falling := data_RX_spi_slave_reg_width;
+        end if;
+
         if falling_edge(SCLK) then
             receive_data_falling(bit_number_rx_falling - 1) <= MOSI;
             data_rec_spi_valid_falling                      <= '0';
-            bit_number_rx_falling                           <= bit_number_rx_falling - 1;
-            if bit_number_rx_falling = 1 then
+            bit_number_rx_falling                           := bit_number_rx_falling - 1;
+            if bit_number_rx_falling = 0 then
                 data_rec_spi_valid_falling  <= '1';
-                bit_number_rx_falling       <= data_TX_spi_slave_reg_width;
-            end if;
-            if reset_rx = '1' then
-                receive_data_falling    <= (others => '0');
-                bit_number_rx_falling   <= data_TX_spi_slave_reg_width;
+                bit_number_rx_falling       := data_RX_spi_slave_reg_width;
             end if;
         end if;
     end process RX_capture_falling;

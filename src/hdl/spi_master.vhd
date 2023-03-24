@@ -110,7 +110,7 @@ begin
                 --FSM register
                 SEND_DATA_I_r3      <= (others => '0');
                 r2_MOSI             <= '0';
-                r2_SCLK             <= '0';
+                r2_SCLK             <= CPOl;
                 r2_SS               <= '1';
                 TX_bit_number_r     <= 0;
             end if;
