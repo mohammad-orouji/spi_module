@@ -225,12 +225,7 @@ begin
         end if;
 
         if rising_edge(SCLK) then
-            if CPHA = '0' then
-                if bit_number_tx_rising /= 0 then
-                    MISO_rising             <= SEND_DATA_I_r(bit_number_tx_rising - 1); 
-                    bit_number_tx_rising    := bit_number_tx_rising - 1;
-                end if;
-            else
+            if bit_number_tx_rising /= 0 then
                 MISO_rising             <= SEND_DATA_I_r(bit_number_tx_rising - 1); 
                 bit_number_tx_rising    := bit_number_tx_rising - 1;
             end if;
@@ -255,12 +250,7 @@ begin
         end if;
 
         if falling_edge(SCLK) then
-            if CPHA = '0' then
-                if bit_number_tx_falling /= 0 then
-                    MISO_falling            <= SEND_DATA_I_r(bit_number_tx_falling - 1); 
-                    bit_number_tx_falling   := bit_number_tx_falling - 1;
-                end if;
-            else
+            if bit_number_tx_falling /= 0 then
                 MISO_falling            <= SEND_DATA_I_r(bit_number_tx_falling - 1); 
                 bit_number_tx_falling   := bit_number_tx_falling - 1;
             end if;
