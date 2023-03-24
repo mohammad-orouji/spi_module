@@ -44,8 +44,11 @@ architecture behavioral of spi_slave is
     signal SEND_DATA_I_r    : std_logic_vector(data_TX_spi_slave_reg_width-1 downto 0)  := (others => '0');
     signal SS_r             : std_logic;
     signal SS_r2            : std_logic;
-    signal shift_en         : std_logic;
-    signal reset_rx         : std_logic;
+
+    signal shift_falling_en     : std_logic;
+    signal shift_rising_en      : std_logic;
+    signal MISO_rising          : std_logic;
+    signal MISO_falling         : std_logic;
 
     signal receive_data_risnig          : std_logic_vector(data_RX_spi_slave_reg_width-1 downto 0) := (others => '0');
     signal data_rec_spi_valid_risnig    : std_logic;
@@ -203,49 +206,66 @@ begin
     end process RX_capture_falling;
           
 
-    TX : process(SCLK, SS)
-        variable bit_number_tx : integer range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width ;
+    MISO    <= MISO_rising when launch_edge = '1' else MISO_falling;
+    TX_launch_edge_rising : process(SCLK, SS)
+        variable bit_number_tx_rising : integer range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width ;
     begin
         if SS = '1' then
-            shift_en        <= '1'; 
-            MISO            <= 'Z'; 
-            bit_number_tx   := data_TX_spi_slave_reg_width;
-        else
-            if CPHA = '0' then
-                if SS = '0' and shift_en = '1' then
-                    shift_en        <= '0'; 
-                    MISO            <= SEND_DATA_I_r(data_TX_spi_slave_reg_width - 1);
-                    bit_number_tx   := bit_number_tx - 1;
-                end if;
-            end if;
+            shift_rising_en         <= '1'; 
+            MISO_rising             <= 'Z'; 
+            bit_number_tx_rising    := data_TX_spi_slave_reg_width;
+        end if;
 
-            if launch_edge = '1' then
-                if rising_edge(SCLK) then
-                    if CPHA = '0' then
-                        if bit_number_tx /= 0 then
-                            MISO            <= SEND_DATA_I_r(bit_number_tx - 1); 
-                            bit_number_tx   := bit_number_tx - 1;
-                        end if;
-                    else
-                        MISO            <= SEND_DATA_I_r(bit_number_tx - 1); 
-                        bit_number_tx   := bit_number_tx - 1;
-                    end if;
-                end if;
-            else
-                if falling_edge(SCLK) then
-                    if CPHA = '0' then
-                        if bit_number_tx /= 0 then
-                            MISO            <= SEND_DATA_I_r(bit_number_tx - 1);
-                            bit_number_tx   := bit_number_tx - 1;
-                        end if;
-                    else
-                        MISO            <= SEND_DATA_I_r(bit_number_tx - 1); 
-                        bit_number_tx   := bit_number_tx - 1;
-                    end if;
-                end if;
+        if SS = '0' and shift_rising_en = '1' then
+            shift_rising_en <= '0';
+            if CPHA = '0' then
+                MISO_rising             <= SEND_DATA_I_r(data_TX_spi_slave_reg_width - 1);
+                bit_number_tx_rising    := bit_number_tx_rising - 1;
             end if;
         end if;
-    end process TX;
+
+        if rising_edge(SCLK) then
+            if CPHA = '0' then
+                if bit_number_tx_rising /= 0 then
+                    MISO_rising             <= SEND_DATA_I_r(bit_number_tx_rising - 1); 
+                    bit_number_tx_rising    := bit_number_tx_rising - 1;
+                end if;
+            else
+                MISO_rising             <= SEND_DATA_I_r(bit_number_tx_rising - 1); 
+                bit_number_tx_rising    := bit_number_tx_rising - 1;
+            end if;
+        end if;
+    end process TX_launch_edge_rising;
+
+    TX_launch_edge_falling : process(SCLK, SS)
+        variable bit_number_tx_falling : integer range 0 to data_TX_spi_slave_reg_width := data_TX_spi_slave_reg_width ;
+    begin
+        if SS = '1' then
+            shift_falling_en        <= '1'; 
+            MISO_falling            <= 'Z'; 
+            bit_number_tx_falling   := data_TX_spi_slave_reg_width;
+        end if;
+
+        if SS = '0' and shift_falling_en = '1' then
+            shift_falling_en <= '0';
+            if CPHA = '0' then
+                MISO_falling            <= SEND_DATA_I_r(data_TX_spi_slave_reg_width - 1);
+                bit_number_tx_falling   := bit_number_tx_falling - 1;
+            end if;
+        end if;
+
+        if falling_edge(SCLK) then
+            if CPHA = '0' then
+                if bit_number_tx_falling /= 0 then
+                    MISO_falling            <= SEND_DATA_I_r(bit_number_tx_falling - 1); 
+                    bit_number_tx_falling   := bit_number_tx_falling - 1;
+                end if;
+            else
+                MISO_falling            <= SEND_DATA_I_r(bit_number_tx_falling - 1); 
+                bit_number_tx_falling   := bit_number_tx_falling - 1;
+            end if;
+        end if;
+    end process TX_launch_edge_falling;
 
 end architecture behavioral;
 
