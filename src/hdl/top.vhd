@@ -4,11 +4,13 @@ use IEEE.std_logic_unsigned.all;
 
 entity top is
     generic (
-        baud_rate        : integer := 1;        -- 1 MHz
-        sys_clock        : integer := 100;      -- 100 MHz
-        data_reg_width   : integer := 8;         
-        error_reg_width  : integer := 4;         
-        SPI_MODE         : std_logic_vector(1 downto 0) := "10"       
+        baud_rate                   : integer := 10;        -- 1 MHz
+        sys_clock                   : integer := 100;      -- 100 MHz
+        control_command_MOSI_width  : integer := 0;  
+        data_MOSI_width             : integer := 8;  
+        data_MISO_width             : integer := 8;  
+        error_reg_width             : integer := 4;         
+        SPI_MODE                    : std_logic_vector(1 downto 0) := "10"   
     );
     port (
         -- RESET_I         : in  std_logic;
@@ -121,16 +123,18 @@ COMPONENT vio_0
     constant sys_clk : integer   := (1000 / sys_clock); -- sys_clk according to ns
     constant CPHA    : std_logic := SPI_MODE(1);            
     constant CPOL    : std_logic := SPI_MODE(0);  
+    constant captur_edge    : std_logic := not (CPHA xor CPOL);  
+    constant launch_edge    : std_logic := CPHA xor CPOL;  
 
     --counter spi master
     signal ready_counter_spi_master : std_logic;
     signal valid_counter_spi_master : std_logic;
-    signal DATA_counter_spi_master  : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
+    signal DATA_counter_spi_master  : std_logic_vector(data_MOSI_width-1 downto 0) := (others => '0') ;
 
     --counter spi slave
     signal ready_counter_spi_slave : std_logic;
     signal valid_counter_spi_slave : std_logic;
-    signal DATA_counter_spi_slave  : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
+    signal DATA_counter_spi_slave  : std_logic_vector(data_MISO_width-1 downto 0) := (others => '0') ;
 
     --spi
     signal SCLK    : std_logic;
@@ -156,16 +160,16 @@ COMPONENT vio_0
     end component;
     signal ready_err_spi_master   : std_logic;
     signal valid_err_spi_master   : std_logic;
-    signal DATA_err_spi_master    : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
+    signal DATA_err_spi_master    : std_logic_vector(data_MISO_width-1 downto 0) := (others => '0') ;
 
     --err_check spi slave
     signal ready_err_spi_slave   : std_logic;
     signal valid_err_spi_slave   : std_logic;
-    signal DATA_err_spi_slave    : std_logic_vector(data_reg_width-1 downto 0) := (others => '0') ;
+    signal DATA_err_spi_slave    : std_logic_vector(data_MOSI_width-1 downto 0) := (others => '0') ;
 --####################################################################################
 --###					END Error check 						                   ###
 --####################################################################################
-    
+
 begin
 
 --####################################################################################
@@ -173,7 +177,7 @@ begin
 --####################################################################################
     ins0_counter : entity  work.COUNTER
         generic map( 
-            reg_width_data => data_reg_width
+            reg_width_data => data_MOSI_width
         )    
         port map(
             ENABLE_I    => enable,
@@ -186,14 +190,13 @@ begin
  
     ins0_spi_master : entity work.spi_master 
         generic map(
-            data_TX_spi_reg_width => data_reg_width,
-            data_RX_spi_reg_width => data_reg_width,
-            SYS_CLOCK             => sys_clk, 
-            SPI_CLOCK             => spi_clk,
-            CPOL                  => CPOL,
-            CPHA                  => CPHA
-            -- MSB_first       : integer := 1; 
-            -- LSB_first       : integer := 0
+            control_command_TX_width => control_command_MOSI_width,
+            data_TX_width            => data_MOSI_width,
+            data_RX_width            => data_MISO_width,
+            SYS_CLOCK                => sys_clk, 
+            SPI_CLOCK                => spi_clk,
+            CPOL                     => CPOL,
+            CPHA                     => CPHA
         )
         port map(
             CLK_I           => CLK_100m,
@@ -215,7 +218,7 @@ begin
 
     ins0_err : ERROR_CHECK
         generic map(
-            number_of_bit_DATA_I   => data_reg_width,
+            number_of_bit_DATA_I   => data_MISO_width,
             number_of_bit_ERROR_O  => error_reg_width
         )
         port map(
@@ -235,7 +238,7 @@ begin
 --####################################################################################
     ins1_counter : entity  work.COUNTER
         generic map( 
-            reg_width_data => data_reg_width
+            reg_width_data => data_MISO_width
         )    
         port map(
             ENABLE_I    => enable,
@@ -248,12 +251,13 @@ begin
 
     ins0_spi_slave : entity work.spi_slave 
         generic map(
-            data_TX_spi_slave_reg_width => data_reg_width,
-            data_RX_spi_slave_reg_width => data_reg_width,
+            control_command_RX_width    => control_command_MOSI_width,
+            data_RX_width               => data_MOSI_width,
+            data_TX_width               => data_MISO_width,
             CPOL                        => CPOL,
-            CPHA                        => CPHA
-            -- MSB_first       : integer := 1 
-            -- LSB_first       : integer := 0
+            CPHA                        => CPHA,
+            captur_edge                 => captur_edge,         
+            launch_edge                 => launch_edge  
         )
         port map(
             CLK_I           => CLK_100m,
@@ -275,7 +279,7 @@ begin
  
     ins1_err : ERROR_CHECK
         generic map(
-            number_of_bit_DATA_I   => data_reg_width,
+            number_of_bit_DATA_I   => data_MOSI_width,
             number_of_bit_ERROR_O  => error_reg_width
         )
         port map(

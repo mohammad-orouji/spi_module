@@ -9,8 +9,14 @@ entity spi_slave is
         data_TX_width               : integer   := 8;
         CPOL                        : std_logic := '0';
         CPHA                        : std_logic := '0';
-        captur_edge                 : std_logic := '0';
-        launch_edge                 : std_logic := '0'
+
+        -- MODE = 00 -->  captur_edge ='1' & launch_edge ='0'
+        -- MODE = 01 -->  captur_edge ='0' & launch_edge ='1'
+        -- MODE = 10 -->  captur_edge ='0' & launch_edge ='1'
+        -- MODE = 11 -->  captur_edge ='1' & launch_edge ='0'
+        captur_edge                 : std_logic := '0';         -- '0' : falling_edge , '1' : rising_edge    
+        launch_edge                 : std_logic := '0'          -- '0' : falling_edge , '1' : rising_edge    
+
         -- MSB_first       : integer := 1 
         -- LSB_first       : integer := 0
     );
