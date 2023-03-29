@@ -19,11 +19,13 @@ begin
 
     ins_0 : entity work.top
         generic map(
-            baud_rate        => 1,       
-            sys_clock        => 100,     
-            data_reg_width   => 8,         
-            error_reg_width  => 4,         
-            SPI_MODE         => "10"       
+            baud_rate                   => 1,       
+            sys_clock                   => 100,  
+            control_command_MOSI_width  => 0,
+            data_MOSI_width             => 8,
+            data_MISO_width             => 8,
+            error_reg_width             => 4,         
+            SPI_MODE                    => "11"       
         )
         port map(
             RESET_I         => reset_tb,
