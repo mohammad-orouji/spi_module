@@ -1,0 +1,3 @@
+this project is written and tested for z-turn board.
+For the MOSI path from master to slave, we take data from a counter and then send it to the slave module by the master module, and the data is collected in the slave module as a multi-bit data, then it is sent to the error checker module for data verification.
+The same procedure exists for MISO, with the difference that it first waits until the master data is completely sent, then it sends its data to the master.
