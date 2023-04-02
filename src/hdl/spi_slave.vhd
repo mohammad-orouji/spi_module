@@ -66,6 +66,7 @@ architecture behavioral of spi_slave is
 ------------------------------------------TX or MISO------------------------------------------
     signal SEND_DATA_I_r    : std_logic_vector(data_TX_width-1 downto 0)  := (others => '0');
     signal SEND_DATA_I_r2   : std_logic_vector(data_TX_width-1 downto 0)  := (others => '0');
+    signal SEND_DATA_I_r3   : std_logic_vector(data_TX_width-1 downto 0)  := (others => '0');
     signal count_TX         : integer range 0 to control_data_bit_num := 0;
     signal counting_TX      : std_logic;
     signal count_TX_Flag    : integer range 0 to data_TX_width := 0;
@@ -239,11 +240,13 @@ begin
             begin
                 if rising_edge(SCLK) then
                     SEND_DATA_I_r2 <= SEND_DATA_I_r;
+                    SEND_DATA_I_r3 <= SEND_DATA_I_r2;
                     if counting_TX = '1' then
-                        SEND_DATA_I_r2 <= SEND_DATA_I_r2(data_TX_width - 2 downto 0) & '0';
+                        SEND_DATA_I_r3 <= SEND_DATA_I_r3(data_TX_width - 2 downto 0) & '0';
                     end if;
                     if RESET_I = '1' then
                         SEND_DATA_I_r2 <= (others => '0');
+                        SEND_DATA_I_r3 <= (others => '0');
                     end if;
                 end if;
             end process;
@@ -272,11 +275,13 @@ begin
             begin
                 if falling_edge(SCLK) then
                     SEND_DATA_I_r2 <= SEND_DATA_I_r;
+                    SEND_DATA_I_r3 <= SEND_DATA_I_r2;
                     if counting_TX = '1' then
-                        SEND_DATA_I_r2 <= SEND_DATA_I_r2(data_TX_width - 2 downto 0) & '0';
+                        SEND_DATA_I_r3 <= SEND_DATA_I_r3(data_TX_width - 2 downto 0) & '0';
                     end if;
                     if RESET_I = '1' then
                         SEND_DATA_I_r2 <= (others => '0');
+                        SEND_DATA_I_r3 <= (others => '0');
                     end if;
                 end if;
             end process;
@@ -285,7 +290,7 @@ begin
     end generate TX;
  --end if generate statement
 
-    MISO <= SEND_DATA_I_r2(data_TX_width -1) when counting_TX = '1' else 'Z';
+    MISO <= SEND_DATA_I_r3(data_TX_width -1) when counting_TX = '1' else 'Z';
 -------------------------------------END TX or MISO-----------------------------------------
 
 end architecture behavioral;
